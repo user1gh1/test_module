@@ -4,7 +4,7 @@ resource "aws_vpc" "mainvpc" {
     Name = "${var.name} VPC"
   }
 }
-#========================================================>
+#========================================================> version 2.0.0
 resource "aws_key_pair" "generated_key" {
   key_name   = "my_aws_key"
   public_key = file(var.Path_to_ssh)
@@ -15,7 +15,8 @@ variable "Path_to_ssh" {
 }
 #========================================================>
 resource "aws_instance" "Test" {
-  count         = var.module_version == "2.0.0" ? 1 : 0
+  #count         = var.module_version == "2.0.0" ? 1 : 0
+  count         = 1
   ami           = data.aws_ami.latest_free_ami.id
   instance_type = var.ec2_instance_type
   subnet_id     = aws_subnet.public_subnets[count.index].id
