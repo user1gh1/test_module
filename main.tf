@@ -4,22 +4,40 @@ resource "aws_vpc" "mainvpc" {
     Name = "${var.name} VPC"
   }
 }
-# resource "aws_instance" "Test" {
-#   count                  = length(var.aws_instance_count)
-#   ami                    = data.aws_ami.latest_free_ami.id
-#   instance_type          = var.ec2_instance_type
-#   subnet_id              = element(aws_subnet.public_subnets.id,length(var.public_subnet_cidrs))
-#   key_name               = aws_key_pair.generated_key.key_name # Reference the key pair resource
-#   vpc_security_group_ids = [aws_security_group.my_security_group.id]
-#   #user_data = file("NginxInstall.sh")
-#   user_data = templatefile("NginxInstall.sh.tpl", {
-#     Hello = var.templateVarHello,
-#     Names = var.templateVar1
-#   })
-#   tags = {
-#     Name = "${var.name}${var.aws_instance_count.count.index}"
-#   }
-# }
+#========================================================>
+resource "aws_key_pair" "generated_key" {
+  key_name   = "my_aws_key"
+  public_key = file(var.Path_to_ssh)
+}
+variable "Path_to_ssh" {
+  type    = string
+  default = "C:/Users/Godlike/.ssh/my_aws_key.pub"
+}
+#========================================================>
+resource "aws_instance" "Test" {
+  count         = var.module_version == "2.0.0" ? 1 : 0
+  ami           = data.aws_ami.latest_free_ami.id
+  instance_type = var.ec2_instance_type
+  subnet_id     = aws_subnet.public_subnets[count.index].id
+  key_name      = aws_key_pair.generated_key.key_name
+  #========================================================>
+  disable_api_stop        = var.disable_api_stop
+  disable_api_termination = var.disable_api_termination
+  ebs_optimized           = var.ebs_optimized
+  get_password_data       = var.get_password_data
+  hibernation             = var.hibernation
+  host_id                 = var.host_id
+  host_resource_group_arn = var.host_resource_group_arn
+  iam_instance_profile    = var.iam_instance_profile
+  monitoring              = var.monitoring
+  tenancy                 = var.tenancy
+  user_data               = var.user_data
+  ipv6_address_count      = var.ipv6_address_count
+  tags = {
+    Name = "${var.name}${var.aws_instance_count[count.index]}"
+  }
+}
+#========================================================>
 resource "aws_internet_gateway" "internet_gateway" {
   vpc_id = aws_vpc.mainvpc.id
   tags = {
@@ -39,6 +57,7 @@ resource "aws_subnet" "public_subnets" {
 }
 
 resource "aws_route_table" "public_route" {
+
   vpc_id = aws_vpc.mainvpc.id
   route {
     cidr_block = "0.0.0.0/0"
