@@ -83,3 +83,4 @@ resource "aws_subnet" "private_subnets" {
     Name = "${var.name}-private-${count.index + 1}"
   }
 }
+# added instance creation implementation
