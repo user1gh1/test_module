@@ -4,23 +4,59 @@ resource "aws_vpc" "mainvpc" {
     Name = "${var.name} VPC"
   }
 }
+#========================================================> version 3.0.0 #========================================================>
+resource "aws_s3_bucket" "s3_bucket" {
+  bucket_prefix       = "${var.name}-s3-"
+  force_destroy       = var.force_destroy
+  object_lock_enabled = var.object_lock_enabled
+
+  tags = {
+    Name        = "${var.name}s3"
+    Environment = "Environment"
+  }
+}
+
+resource "aws_security_group" "main_security_group" {
+  name   = "${var.name}-security-group"
+  vpc_id = aws_vpc.mainvpc.id
+  dynamic "ingress" {
+    for_each = var.ingress_ports #(for_each) works with set and map
+    content {
+      from_port   = ingress.value
+      to_port     = ingress.value
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+
+  }
+  dynamic "egress" {
+    for_each = var.egress_ports
+    content {
+      from_port   = egress.value
+      to_port     = egress.value
+      protocol    = "-1"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  }
+
+  tags = {
+    Name = "${var.name}-security-group"
+  }
+}
 #========================================================> version 2.0.0
 resource "aws_key_pair" "generated_key" {
   key_name   = "my_aws_key"
   public_key = file(var.Path_to_ssh)
 }
-variable "Path_to_ssh" {
-  type    = string
-  default = "C:/Users/Godlike/.ssh/my_aws_key.pub"
-}
+
 #========================================================>
 resource "aws_instance" "Test" {
-  #count         = var.module_version == "2.0.0" ? 1 : 0
-  count         = 1
-  ami           = data.aws_ami.latest_free_ami.id
-  instance_type = var.ec2_instance_type
-  subnet_id     = aws_subnet.public_subnets[count.index].id
-  key_name      = aws_key_pair.generated_key.key_name
+  count                  = 1
+  ami                    = data.aws_ami.latest_free_ami.id
+  instance_type          = var.ec2_instance_type
+  subnet_id              = aws_subnet.public_subnets[count.index].id
+  key_name               = aws_key_pair.generated_key.key_name
+  vpc_security_group_ids = [aws_security_group.main_security_group.id]
   #========================================================>
   disable_api_stop        = var.disable_api_stop
   disable_api_termination = var.disable_api_termination
@@ -35,7 +71,7 @@ resource "aws_instance" "Test" {
   user_data               = var.user_data
   ipv6_address_count      = var.ipv6_address_count
   tags = {
-    Name = "${var.name}${var.aws_instance_count[count.index]}"
+    Name = "${var.name}-${var.aws_instance_count[count.index]}"
   }
 }
 #========================================================>
@@ -51,7 +87,7 @@ resource "aws_subnet" "public_subnets" {
   vpc_id                  = aws_vpc.mainvpc.id
   cidr_block              = element(var.public_subnet_cidrs, count.index)
   availability_zone       = data.aws_availability_zones.available.names[count.index]
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = var.map_public_ip_on_launch
   tags = {
     Name = "${var.name}-public-${count.index + 1}"
   }

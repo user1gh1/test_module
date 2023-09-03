@@ -1,9 +1,11 @@
+#========================================================>vpc and subnet
 variable "vpc_cidr" {
   default = "10.0.0.0/16"
 }
 
 variable "name" {
-  default = "dev"
+  default     = "dev"
+  description = "This Name is global for all"
 }
 
 variable "public_subnet_cidrs" {
@@ -12,7 +14,43 @@ variable "public_subnet_cidrs" {
     "10.0.2.0/24"
   ]
 }
-#========================================================>
+
+variable "private_subnet_cidrs" {
+  default = [
+    "10.0.11.0/24",
+    "10.0.22.0/24"
+  ]
+}
+variable "map_public_ip_on_launch" {
+  default = true
+}
+#========================================================> s3 bucket
+variable "force_destroy" {
+  default = false
+}
+variable "object_lock_enabled" {
+  default = false
+}
+#========================================================> security group
+variable "ingress_ports" {
+  type    = set(string)
+  default = ["80", "22", "443"]
+}
+variable "egress_ports" {
+  type    = set(string)
+  default = ["0"]
+}
+#========================================================> key path
+variable "Path_to_ssh" {
+  type    = string
+  default = "C:/Users/Godlike/.ssh/my_aws_key.pub"
+}
+#========================================================> ec2
+
+variable "ec2_instance_type" {
+  type    = string
+  default = "t2.micro"
+}
 variable "aws_instance_count" {
   type    = list(string)
   default = ["one", "two"]
@@ -53,20 +91,7 @@ variable "user_data" {
 variable "ipv6_address_count" {
   default = 0
 }
-
-#========================================================>
-variable "private_subnet_cidrs" {
-  default = [
-    "10.0.11.0/24",
-    "10.0.22.0/24"
-  ]
-}
-
-variable "ec2_instance_type" {
-  type    = string
-  default = "t2.micro"
-}
-
+#========================================================> Data
 data "aws_availability_zones" "available" {}
 data "aws_ami" "latest_free_ami" {
   most_recent = true
