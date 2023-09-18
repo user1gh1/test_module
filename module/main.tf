@@ -4,6 +4,85 @@ resource "aws_vpc" "mainvpc" {
     Name = "${var.name} VPC"
   }
 }
+#========================================================> version 4.0.0 #========================================================>
+resource "aws_iam_role_policy" "ec2_policy" {
+  name = "ec2_policy"
+  role = aws_iam_role.role_for_s3.id
+
+  #ec2:*Describe
+  policy = data.aws_iam_policy_document.policy_s3_bucket.json
+}
+
+resource "aws_iam_role" "role_for_s3" {
+  name = "role_for_s3"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Sid    = ""
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      },
+    ]
+  })
+}
+
+resource "aws_iam_instance_profile" "ec2_profile" {
+  name = "instance_allow_to_s3_bucket"
+  role = aws_iam_role.role_for_s3.name
+}
+#====================================>
+resource "aws_iam_policy" "policy_for_ec2" {
+  name   = "s3-bucket-allow"
+  policy = data.aws_iam_policy_document.policy_s3_bucket.json
+}
+resource "aws_iam_role" "instance" {
+  name                = "instance_role"
+  path                = "/system/"
+  assume_role_policy  = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+      },
+        
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+  managed_policy_arns = [aws_iam_policy.policy_for_ec2.arn]
+}
+data "aws_iam_policy_document" "policy_s3_bucket" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "s3:ListBucket"
+    ]
+    resources = [
+      "*"
+    ]
+  }
+  statement {
+    effect = "Allow"
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject"
+    ]
+    resources = [
+      "${aws_s3_bucket.s3_bucket.arn}/*"
+    ]
+  }
+}
+
 #========================================================> version 3.0.0 #========================================================>
 resource "aws_s3_bucket" "s3_bucket" {
   bucket_prefix       = "${var.name}-s3-"
@@ -65,7 +144,7 @@ resource "aws_instance" "Test" {
   hibernation             = var.hibernation
   host_id                 = var.host_id
   host_resource_group_arn = var.host_resource_group_arn
-  iam_instance_profile    = var.iam_instance_profile
+  iam_instance_profile    = aws_iam_instance_profile.ec2_profile.name
   monitoring              = var.monitoring
   tenancy                 = var.tenancy
   user_data               = var.user_data
